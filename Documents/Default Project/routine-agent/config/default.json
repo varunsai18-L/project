@@ -1,0 +1,52 @@
+{
+  "app": {
+    "name": "RoutineAgent",
+    "version": "1.0.0",
+    "timezone": "America/Los_Angeles",
+    "weekStartDay": "monday"
+  },
+  "scheduler": {
+    "defaultBreakDuration": 15,
+    "maxContinuousWork": 90,
+    "minGoalSessionDuration": 30,
+    "maxGoalSessionDuration": 120,
+    "bufferBetweenBlocks": 10,
+    "optimizationWeights": {
+      "goalProgress": 0.4,
+      "preferenceAlignment": 0.3,
+      "energyMatching": 0.2,
+      "compactness": 0.1
+    }
+  },
+  "calendar": {
+    "syncIntervalMinutes": 15,
+    "lookaheadWeeks": 4,
+    "providers": {
+      "google": {
+        "enabled": true,
+        "scopes": ["https://www.googleapis.com/auth/calendar.readonly", "https://www.googleapis.com/auth/calendar.events"]
+      },
+      "outlook": {
+        "enabled": true,
+        "scopes": ["Calendars.ReadWrite"]
+      }
+    }
+  },
+  "replanner": {
+    "autoReplan": true,
+    "replanThresholdMinutes": 30,
+    "maxReplanAttempts": 3,
+    "preserveFixedCommitments": true,
+    "notifyOnConflicts": true
+  },
+  "notifications": {
+    "enabled": true,
+    "channels": ["console", "webhook"],
+    "webhookUrl": "",
+    "reminderMinutesBefore": [15, 5, 1]
+  },
+  "storage": {
+    "type": "file",
+    "path": "./data/routine-agent.json"
+  }
+}
