@@ -34,8 +34,20 @@
   }
 
   body {
-    @apply bg-surface-50 dark:bg-surface-950 text-surface-900 dark:bg-surface-50 antialiased;
+    @apply bg-surface-50 dark:bg-surface-950 text-surface-900 dark:text-surface-100 antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-image:
+      radial-gradient(60% 55% at 12% -5%, rgba(6, 189, 255, 0.10), transparent 62%),
+      radial-gradient(55% 50% at 92% 8%, rgba(124, 86, 255, 0.10), transparent 64%),
+      radial-gradient(70% 60% at 50% 108%, rgba(255, 125, 22, 0.07), transparent 68%);
+    background-attachment: fixed;
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(62% 55% at 10% -8%, rgba(6, 189, 255, 0.16), transparent 60%),
+      radial-gradient(55% 50% at 94% 4%, rgba(124, 86, 255, 0.16), transparent 62%),
+      radial-gradient(75% 60% at 50% 112%, rgba(255, 125, 22, 0.10), transparent 66%);
   }
 
   ::selection {
@@ -185,11 +197,77 @@
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-brand-600 via-accent-600 to-brand-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-brand-500 via-accent-500 to-ember-500 bg-clip-text text-transparent;
+  }
+
+  .gradient-text-brand {
+    @apply bg-gradient-to-r from-brand-400 to-accent-500 bg-clip-text text-transparent;
   }
 
   .gradient-border {
-    @apply relative before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-r before:from-brand-500 before:via-accent-500 before:to-brand-500 before:p-[1px] before:-z-10;
+    @apply relative before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-r before:from-brand-500 before:via-accent-500 before:to-ember-500 before:p-[1px] before:-z-10;
+  }
+
+  .panel {
+    @apply relative overflow-hidden rounded-2xl border border-surface-200/70 dark:border-surface-800/70 bg-white/70 dark:bg-surface-900/70 backdrop-blur-xl;
+  }
+
+  .panel-dark {
+    @apply relative overflow-hidden rounded-2xl border border-surface-800 bg-surface-900/80 backdrop-blur-xl;
+  }
+
+  .hud-chip {
+    @apply inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium tracking-wide;
+  }
+
+  .eyebrow {
+    @apply text-[0.7rem] font-semibold uppercase tracking-[0.22em];
+  }
+
+  .grain {
+    position: relative;
+  }
+
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+  }
+
+  .noise-fixed {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 44px -8px rgba(6, 189, 255, 0.55);
+  }
+
+  .glow-violet {
+    box-shadow: 0 0 44px -8px rgba(124, 86, 255, 0.5);
+  }
+
+  .glow-ember {
+    box-shadow: 0 0 44px -8px rgba(255, 125, 22, 0.5);
+  }
+
+  .text-shadow-core {
+    text-shadow: 0 0 28px rgba(6, 189, 255, 0.35);
+  }
+
+  .hairline {
+    background: linear-gradient(90deg, transparent, rgba(6, 189, 255, 0.35), rgba(124, 86, 255, 0.3), transparent);
   }
 }
 

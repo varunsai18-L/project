@@ -21,14 +21,14 @@ const SIZE_CLASSES = {
 };
 
 const COLOR_MAP: Record<string, { main: string; light: string; dark: string; glow: string }> = {
-  brand:    { main: '#0ea5e9', light: '#38bdf8', dark: '#0284c7', glow: 'rgba(14,165,233,0.5)' },
-  accent:   { main: '#d946ef', light: '#e879f9', dark: '#c026d3', glow: 'rgba(217,70,239,0.5)' },
-  success:  { main: '#22c55e', light: '#4ade80', dark: '#16a34a', glow: 'rgba(34,197,94,0.5)' },
-  warning:  { main: '#f59e0b', light: '#fbbf24', dark: '#d97706', glow: 'rgba(245,158,11,0.5)' },
-  danger:   { main: '#ef4444', light: '#f87171', dark: '#dc2626', glow: 'rgba(239,68,68,0.5)' },
+  brand:   { main: '#06bdff', light: '#6fe7ff', dark: '#0878b0', glow: 'rgba(6,189,255,0.55)' },
+  accent:  { main: '#7c56ff', light: '#bdb0ff', dark: '#4b22b8', glow: 'rgba(124,86,255,0.5)' },
+  success: { main: '#22c55e', light: '#6ee7a8', dark: '#16a34a', glow: 'rgba(34,197,94,0.5)' },
+  warning: { main: '#ff7d16', light: '#ffc27d', dark: '#c74908', glow: 'rgba(255,125,22,0.5)' },
+  danger:  { main: '#f45b5b', light: '#ff9d9d', dark: '#dc2626', glow: 'rgba(244,91,91,0.5)' },
 };
 
-const ORB_ANIMATIONS = {
+const ORB_ANIMATIONS: Record<string, Record<string, unknown>> = {
   idle: {
     scale: [1, 1.02, 1],
     rotate: [0, 0, 0],
@@ -36,44 +36,56 @@ const ORB_ANIMATIONS = {
   },
   understanding: {
     scale: [1, 1.05, 1],
-    rotate: [0, 180, 360],
-    transition: { duration: 3, repeat: Infinity, ease: 'linear' },
+    rotate: [0, 8, 0],
+    transition: { duration: 2.4, repeat: Infinity, ease: 'easeInOut' },
   },
   planning: {
-    scale: [1, 1.08, 1],
-    rotate: [0, -90, -180, -270, -360],
-    transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' },
+    scale: [1, 1.07, 1],
+    rotate: [0, -10, 0],
+    transition: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
   },
   optimizing: {
-    scale: [1, 1.1, 0.95, 1],
-    rotate: [0, 90, 180, 270, 360],
-    transition: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
+    scale: [1, 1.1, 0.96, 1],
+    rotate: [0, 12, -6, 0],
+    transition: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' },
   },
   ready: {
-    scale: [1, 1.03, 1],
+    scale: [1, 1.04, 1],
     rotate: 0,
     transition: { duration: 3, repeat: Infinity, ease: 'easeInOut' },
   },
   replanning: {
     scale: [1, 1.06, 1],
-    rotate: [0, -180, -360],
-    transition: { duration: 2, repeat: Infinity, ease: 'linear' },
-  },
-  needs_approval: {
-    scale: [1, 1.04, 1],
-    rotate: [0, 5, -5, 0],
+    rotate: [0, -8, 0],
     transition: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' },
   },
   adapting: {
     scale: [1, 1.06, 1],
-    rotate: [0, -180, -360],
-    transition: { duration: 2, repeat: Infinity, ease: 'linear' },
+    rotate: [0, -8, 0],
+    transition: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' },
+  },
+  needs_approval: {
+    scale: [1, 1.04, 1],
+    rotate: [0, 4, -4, 0],
+    transition: { duration: 1.4, repeat: Infinity, ease: 'easeInOut' },
   },
   error: {
     scale: [1, 1.02, 1],
     x: [0, -4, 4, -4, 4, 0],
     transition: { duration: 0.5, repeat: Infinity, ease: 'easeInOut' },
   },
+};
+
+const ORBIT_SPEED: Record<string, string> = {
+  idle: '26s',
+  understanding: '7s',
+  planning: '5s',
+  optimizing: '3.6s',
+  ready: '16s',
+  replanning: '4.5s',
+  adapting: '4.5s',
+  needs_approval: '6s',
+  error: '6s',
 };
 
 export function AgentOrb({
@@ -86,7 +98,10 @@ export function AgentOrb({
 }: AgentOrbProps) {
   const config = AGENT_STATE_CONFIG[state];
   const colors = COLOR_MAP[config.color] || COLOR_MAP.brand;
-  const isActive = state !== 'idle' && state !== 'ready' && state !== 'error';
+  const busy = !['idle', 'ready', 'error'].includes(state);
+  const dur = ORBIT_SPEED[state] || '12s';
+  const gid = `core-${state}`;
+  const rid = `ring-${state}`;
 
   return (
     <div className={cn('flex flex-col items-center', className)}>
@@ -95,114 +110,146 @@ export function AgentOrb({
           <motion.div
             key={state}
             className="absolute inset-0"
-            animate={ORB_ANIMATIONS[state]}
+            animate={ORB_ANIMATIONS[state] || ORB_ANIMATIONS.idle}
             initial={false}
           >
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" aria-hidden="true">
               <defs>
-                <radialGradient id={`orb-g-${state}`} cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor={colors.main} stopOpacity="0.25" />
-                  <stop offset="60%" stopColor={colors.main} stopOpacity="0.08" />
+                <radialGradient id={`b-${gid}`} cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor={colors.main} stopOpacity="0.55" />
+                  <stop offset="55%" stopColor={colors.main} stopOpacity="0.18" />
                   <stop offset="100%" stopColor={colors.main} stopOpacity="0" />
                 </radialGradient>
-                <linearGradient id={`orb-r-${state}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                <radialGradient id={gid} cx="34%" cy="28%" r="78%">
                   <stop offset="0%" stopColor={colors.light} />
-                  <stop offset="50%" stopColor={colors.dark} />
-                  <stop offset="100%" stopColor={colors.light} />
+                  <stop offset="45%" stopColor={colors.main} />
+                  <stop offset="100%" stopColor={colors.dark} />
+                </radialGradient>
+                <linearGradient id={rid} x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor={colors.light} />
+                  <stop offset="55%" stopColor={colors.main} />
+                  <stop offset="100%" stopColor="#7c56ff" />
                 </linearGradient>
-                <filter id={`orb-glow-${state}`}>
-                  <feGaussianBlur stdDeviation="3" result="blur" />
+                <filter id={`f-${gid}`} x="-60%" y="-60%" width="220%" height="220%">
+                  <feGaussianBlur stdDeviation="2.6" result="b" />
                   <feMerge>
-                    <feMergeNode in="blur" />
+                    <feMergeNode in="b" />
                     <feMergeNode in="SourceGraphic" />
                   </feMerge>
                 </filter>
               </defs>
 
-              <circle cx="50" cy="50" r="46" fill={`url(#orb-g-${state})`} />
+              {/* bloom */}
+              <circle cx="50" cy="50" r="48" fill={`url(#b-${gid})`} />
 
-              {isActive && (
-                <>
-                  <circle
-                    cx="50" cy="50" r="38"
-                    stroke={`url(#orb-r-${state})`}
-                    strokeWidth="2" fill="none"
-                    strokeDasharray="120"
-                    className="opacity-70"
-                  >
-                    <animateTransform attributeName="transform" type="rotate" from="0 50 50" to="360 50 50" dur="3s" repeatCount="indefinite" />
-                  </circle>
-                  <circle
-                    cx="50" cy="50" r="30"
-                    stroke={`url(#orb-r-${state})`}
-                    strokeWidth="1.5" fill="none"
-                    strokeDasharray="80"
-                    className="opacity-40"
-                  >
-                    <animateTransform attributeName="transform" type="rotate" from="360 50 50" to="0 50 50" dur="4s" repeatCount="indefinite" />
-                  </circle>
-                </>
-              )}
+              {/* orbit 1 — time cycle */}
+              <g style={{ transformOrigin: '50px 50px', transformBox: 'view-box' }}>
+                <animateTransform
+                  attributeName="transform"
+                  type="rotate"
+                  from="0 50 50"
+                  to="360 50 50"
+                  dur={dur}
+                  repeatCount="indefinite"
+                />
+                <ellipse
+                  cx="50" cy="50" rx="43" ry="17"
+                  transform="rotate(-28 50 50)"
+                  fill="none" stroke={`url(#${rid})`}
+                  strokeWidth="2" opacity="0.95"
+                  strokeDasharray="6 4"
+                />
+                <circle cx="87.8" cy="30" r="3" fill={colors.light} filter={`url(#f-${gid})`} />
+              </g>
 
-              {state === 'ready' && (
-                <circle
-                  cx="50" cy="50" r="42"
-                  stroke="#22c55e" strokeWidth="2.5" fill="none"
-                  strokeDasharray="264" strokeDashoffset="0"
-                  opacity="0.9"
-                >
-                  <animate attributeName="strokeDashoffset" from="264" to="0" dur="0.8s" fill="freeze" />
-                </circle>
-              )}
+              {/* orbit 2 — counter rotation */}
+              <g style={{ transformOrigin: '50px 50px', transformBox: 'view-box' }}>
+                <animateTransform
+                  attributeName="transform"
+                  type="rotate"
+                  from="360 50 50"
+                  to="0 50 50"
+                  dur={busy ? `${parseFloat(dur) * 1.6}s` : '38s'}
+                  repeatCount="indefinite"
+                />
+                <ellipse
+                  cx="50" cy="50" rx="38" ry="38"
+                  fill="none" stroke={colors.main}
+                  strokeWidth="0.9" opacity="0.45"
+                />
+                <ellipse
+                  cx="50" cy="50" rx="43" ry="17"
+                  transform="rotate(52 50 50)"
+                  fill="none" stroke={`url(#${rid})`}
+                  strokeWidth="1.3" opacity="0.7"
+                />
+                <circle cx="14" cy="66" r="2.2" fill={colors.main} opacity="0.9" />
+              </g>
 
-              <circle
-                cx="50" cy="50"
-                r={state === 'idle' ? 24 : state === 'ready' ? 28 : 20}
-                fill={colors.main}
-                filter={`url(#orb-glow-${state})`}
-              />
-
-              <circle
-                cx="50" cy="50"
-                r={state === 'idle' ? 24 : state === 'ready' ? 28 : 20}
-                fill="none"
-                stroke={colors.light}
-                strokeWidth="1"
-                opacity="0.6"
-              />
-
+              {/* progress ring */}
               {showProgress && progress > 0 && (
                 <circle
-                  cx="50" cy="50" r="44"
+                  cx="50" cy="50" r="45"
                   stroke={colors.main}
                   strokeWidth="3" fill="none"
                   strokeLinecap="round"
-                  strokeDasharray={`${2 * Math.PI * 44 * (progress / 100)} ${2 * Math.PI * 44}`}
+                  strokeDasharray={`${2 * Math.PI * 45 * (progress / 100)} ${2 * Math.PI * 45}`}
                   transform="rotate(-90 50 50)"
                   className="transition-all duration-700 ease-out"
-                  opacity="0.9"
+                  opacity="0.95"
+                  filter={`url(#f-${gid})`}
                 />
               )}
 
+              {/* ready confirm ring */}
+              {state === 'ready' && (
+                <circle
+                  cx="50" cy="50" r="41"
+                  stroke="#22c55e" strokeWidth="2.4" fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray="258" strokeDashoffset="0"
+                  opacity="0.9"
+                >
+                  <animate attributeName="strokeDashoffset" from="258" to="0" dur="0.8s" fill="freeze" />
+                </circle>
+              )}
+
+              {/* AI core */}
+              <circle
+                cx="50" cy="50" r={state === 'idle' ? 20 : state === 'ready' ? 23 : 18}
+                fill={`url(#${gid})`}
+                filter={`url(#f-${gid})`}
+              />
+              <circle
+                cx="50" cy="50" r={state === 'idle' ? 20 : state === 'ready' ? 23 : 18}
+                fill="none"
+                stroke={colors.light}
+                strokeWidth="0.8"
+                opacity="0.7"
+              />
+              {/* core inner spark */}
+              <circle cx="50" cy="50" r="4.5" fill="#ffffff" opacity="0.9" />
+
+              {/* spark particles */}
               <g>
-                {[...Array(8)].map((_, i) => (
+                {[...Array(7)].map((_, i) => (
                   <motion.circle
                     key={i}
                     cx="50" cy="50"
-                    r={state === 'optimizing' ? 3 : 2}
+                    r={2}
                     fill={colors.light}
                     animate={{
-                      r: [state === 'optimizing' ? 4 : 2, state === 'optimizing' ? 1 : 0.5],
-                      opacity: [0.7, 0],
-                      rotate: [i * 45, i * 45 + 360],
+                      r: [busy ? 3.2 : 2, 0.6],
+                      opacity: [0.85, 0],
+                      rotate: [i * 51.4, i * 51.4 + 360],
                     }}
                     transition={{
-                      duration: state === 'optimizing' ? 1.5 : 2.5,
+                      duration: busy ? 1.6 : 3.2,
                       repeat: Infinity,
-                      delay: i * 0.25,
+                      delay: i * 0.24,
                       ease: 'easeOut',
                     }}
-                    style={{ transformOrigin: '50px 50px' }}
+                    style={{ transformOrigin: '50px 50px', transformBox: 'view-box' }}
                   />
                 ))}
               </g>
@@ -220,23 +267,32 @@ export function AgentOrb({
             transition={{ duration: 0.3 }}
           >
             <div
-              className="flex items-center justify-center rounded-full backdrop-blur-sm"
+              className="flex items-center justify-center rounded-full backdrop-blur-sm border"
               style={{
-                width: size === 'sm' ? 40 : size === 'md' ? 56 : size === 'lg' ? 88 : 112,
-                height: size === 'sm' ? 40 : size === 'md' ? 56 : size === 'lg' ? 88 : 112,
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                border: `1px solid ${colors.light}30`,
+                width: size === 'sm' ? 26 : size === 'md' ? 38 : size === 'lg' ? 58 : 74,
+                height: size === 'sm' ? 26 : size === 'md' ? 38 : size === 'lg' ? 58 : 74,
+                backgroundColor: 'rgba(6,9,14,0.42)',
+                borderColor: `${colors.light}55`,
+                boxShadow: `0 0 22px -4px ${colors.glow}`,
               }}
             >
               <svg
                 style={{
-                  width: size === 'sm' ? 20 : size === 'md' ? 28 : size === 'lg' ? 36 : 48,
-                  height: size === 'sm' ? 20 : size === 'md' ? 28 : size === 'lg' ? 36 : 48,
-                  color: colors.main,
+                  width: size === 'sm' ? 14 : size === 'md' ? 20 : size === 'lg' ? 30 : 38,
+                  height: size === 'sm' ? 14 : size === 'md' ? 20 : size === 'lg' ? 30 : 38,
+                  color: colors.light,
                 }}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={getStateIcon(config.icon)} />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.6}
+                  d={getStateIcon(config.icon)}
+                />
               </svg>
             </div>
           </motion.div>
@@ -253,11 +309,11 @@ export function AgentOrb({
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.3 }}
           >
-            <p className="font-medium text-surface-900 dark:text-surface-100">
-              {config.label}
+            <p className="font-display font-semibold text-surface-900 dark:text-surface-100">
+              {config.coach}
             </p>
             <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5 max-w-xs">
-              {config.description}
+              {config.label} · {config.description}
             </p>
             {showProgress && progress > 0 && (
               <motion.div

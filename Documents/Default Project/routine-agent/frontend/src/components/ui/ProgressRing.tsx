@@ -14,11 +14,11 @@ interface ProgressRingProps {
 }
 
 const RING_COLORS: Record<string, string> = {
-  brand: '#0ea5e9',
+  brand: '#06bdff',
   success: '#22c55e',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  accent: '#d946ef',
+  warning: '#ff9d40',
+  danger: '#f45b5b',
+  accent: '#7c56ff',
 };
 
 export function ProgressRing({

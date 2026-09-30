@@ -44,7 +44,7 @@ export const demoCommitments: Commitment[] = [
     priority: 'critical',
     type: 'fixed',
     source: 'manual',
-    color: '#3b82f6',
+    color: '#06bdff',
   },
   {
     id: 'commit-gym',
@@ -68,7 +68,7 @@ export const demoCommitments: Commitment[] = [
     priority: 'high',
     type: 'fixed',
     source: 'manual',
-    color: '#f59e0b',
+    color: '#ff9d40',
   },
 ];
 
@@ -88,7 +88,7 @@ export const demoGoals: Goal[] = [
     category: 'learning',
     priority: 'high',
     progress: 0,
-    color: '#61dafb',
+    color: '#7c56ff',
   },
   {
     id: 'goal-dsa',
@@ -105,7 +105,7 @@ export const demoGoals: Goal[] = [
     category: 'learning',
     priority: 'high',
     progress: 0,
-    color: '#ff6b6b',
+    color: '#f45b5b',
   },
   {
     id: 'goal-hackathon',
@@ -122,7 +122,7 @@ export const demoGoals: Goal[] = [
     category: 'work',
     priority: 'medium',
     progress: 0,
-    color: '#a855f7',
+    color: '#7c56ff',
   },
 ];
 
@@ -141,7 +141,7 @@ export const demoRecurringTasks: RecurringTask[] = [
     isFlexible: true,
     estimatedEnergy: 'high',
     type: 'recurring',
-    color: '#ff6b6b',
+    color: '#f45b5b',
   },
   {
     id: 'task-exercise',
@@ -171,7 +171,7 @@ export const demoRecurringTasks: RecurringTask[] = [
     isFlexible: true,
     estimatedEnergy: 'low',
     type: 'recurring',
-    color: '#3b82f6',
+    color: '#06bdff',
   },
 ];
 

@@ -14,9 +14,9 @@ import {
   ChevronRight,
   Moon,
   Sun,
-  Sparkles,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import { RoutineOSMark } from '@/components/brand/RoutineOSLogo';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard, description: 'Overview & insights' },
@@ -33,28 +33,33 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
+      <div className="noise-fixed" aria-hidden="true" />
       <motion.aside
         initial={{ width: isCollapsed ? '64px' : '280px' }}
         animate={{ width: isCollapsed ? '64px' : '280px' }}
         className={cn(
-          'fixed left-0 top-0 z-40 h-screen bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl border-r border-surface-200/50 dark:border-surface-800/50 transition-all duration-300 ease-spring',
-          'flex flex-col overflow-hidden'
+          'grain fixed left-0 top-0 z-40 h-screen backdrop-blur-xl border-r border-surface-200/60 dark:border-surface-800/70 transition-all duration-300 ease-spring',
+          'flex flex-col overflow-hidden',
+          'bg-white/85 dark:bg-[#080b11]/90'
         )}
         style={{ width: isCollapsed ? '64px' : '280px' }}
       >
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-brand-500/12 via-accent-500/6 to-transparent" />
         <div className="flex h-16 items-center justify-between px-4 border-b border-surface-200/50 dark:border-surface-800/50">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
-            className={cn('flex items-center gap-3 transition-all duration-300', isCollapsed && 'justify-center')}
+            className={cn('relative flex items-center transition-all duration-300', isCollapsed ? 'justify-center gap-0' : 'gap-2.5')}
           >
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-accent-500">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
+            <RoutineOSMark
+              uid="sidebar"
+              size={34}
+              className="shrink-0 drop-shadow-[0_0_10px_rgba(6,189,255,0.45)]"
+            />
             {!isCollapsed && (
-              <span className="font-display font-bold text-xl text-surface-900 dark:text-surface-100">
-                Routine Agent
+              <span className="font-display font-bold text-lg tracking-tight text-surface-900 dark:text-white">
+                Routine<span className="text-brand-500">OS</span>
               </span>
             )}
           </motion.div>
@@ -83,9 +88,10 @@ export function Layout() {
                     'relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200',
                     'text-surface-600 dark:text-surface-400',
                     'hover:text-surface-900 dark:hover:text-surface-100',
-                    'hover:bg-surface-100 dark:hover:bg-surface-800',
-                    isActive && 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400',
-                    isActive && 'before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-brand-500 before:rounded-r-full'
+                    'hover:bg-surface-100 dark:hover:bg-surface-800/70',
+                    'hover:translate-x-0.5',
+                    isActive && 'bg-gradient-to-r from-brand-500/15 to-accent-500/10 text-brand-600 dark:text-brand-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
+                    isActive && 'before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-gradient-to-b before:from-brand-400 before:to-accent-500 before:rounded-r-full before:shadow-[0_0_12px_rgba(6,189,255,0.8)]'
                   )}
                   title={isCollapsed ? item.label : undefined}
                 >
@@ -139,22 +145,34 @@ export function Layout() {
         )}
         style={{ marginLeft: isCollapsed ? '64px' : '280px' }}
       >
-        <div className="sticky top-0 z-30 bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl border-b border-surface-200/50 dark:border-surface-800/50">
+        <div className="sticky top-0 z-30 bg-white/75 dark:bg-[#06090e]/80 backdrop-blur-xl border-b border-surface-200/60 dark:border-surface-800/70">
           <div className="h-16 px-6 flex items-center justify-between">
-            <h1 className="font-display font-semibold text-xl text-surface-900 dark:text-surface-100">
-              {NAV_ITEMS.find(i => location.pathname.startsWith(i.path))?.label || 'Dashboard'}
-            </h1>
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-100 dark:bg-surface-800 text-sm text-surface-600 dark:text-surface-400">
-                <span className="font-mono">⌘K</span>
+              <RoutineOSMark uid="top" size={20} className="sm:hidden" />
+              <h1 className="font-display font-semibold text-xl tracking-tight text-surface-900 dark:text-surface-100">
+                {NAV_ITEMS.filter(i => i.path !== '/' || location.pathname === '/')
+                  .slice()
+                  .sort((a, b) => b.path.length - a.path.length)
+                  .find(i => location.pathname === i.path || location.pathname.startsWith(i.path + '/'))
+                  ?.label || 'Dashboard'}
+              </h1>
+              <span className="hidden sm:inline-block h-4 w-px bg-surface-300 dark:bg-surface-700" />
+              <span className="hidden sm:inline eyebrow text-surface-400 dark:text-surface-500">RoutineOS</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-surface-200 dark:border-surface-800 bg-surface-100/70 dark:bg-surface-800/70 text-sm text-surface-500 dark:text-surface-400">
+                <span className="font-mono text-brand-500">⌘K</span>
                 <span>Search</span>
               </div>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-accent-500" />
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-accent-500 grid place-items-center ring-1 ring-white/20 shadow-glow">
+                <RoutineOSMark uid="avatar" size={16} />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="relative p-6">
+          <div className="pointer-events-none absolute -top-24 right-0 h-72 w-72 rounded-full bg-accent-500/10 blur-3xl" />
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

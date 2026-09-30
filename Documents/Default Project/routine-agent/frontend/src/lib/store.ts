@@ -56,6 +56,7 @@ interface PlannerState {
   rejectProposal: () => void;
   loadDemo: () => void;
   reset: () => void;
+  importCalendarCommitments: (calendarCommitments: Commitment[]) => Conflict[];
 }
 
 const initialState = {
@@ -66,7 +67,7 @@ const initialState = {
   currentRoutine: null,
   agentStatus: {
     status: 'idle' as const,
-    message: 'Tell me what you want to accomplish.',
+    message: 'Ready when you are.',
   },
   pendingProposal: null,
   proposedRoutine: null,
@@ -115,24 +116,24 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
   generateRoutine: async () => {
     const { commitments, goals, recurringTasks, preferences } = get();
     set({
-      agentStatus: { status: 'understanding', message: 'Understanding your commitments...', progress: 20 },
+      agentStatus: { status: 'understanding', message: 'Reading your commitments...', progress: 20 },
     });
     await new Promise((r) => setTimeout(r, 500));
 
     set({
-      agentStatus: { status: 'planning', message: 'Balancing your goals and available time...', progress: 50 },
+      agentStatus: { status: 'planning', message: 'Assigning focus blocks and recovery windows...', progress: 50 },
     });
     await new Promise((r) => setTimeout(r, 800));
 
     set({
-      agentStatus: { status: 'optimizing', message: 'Resolving conflicts and improving your schedule...', progress: 80 },
+      agentStatus: { status: 'optimizing', message: 'Balancing goals, focus and recovery...', progress: 80 },
     });
     await new Promise((r) => setTimeout(r, 500));
 
     const routine = generateWeeklyRoutine(commitments, goals, recurringTasks, preferences);
     set({
       currentRoutine: routine,
-      agentStatus: { status: 'ready', message: 'Your personalized week is ready.', progress: 100 },
+      agentStatus: { status: 'ready', message: 'Plan locked in. Nothing double-booked.', progress: 100 },
     });
   },
 
@@ -142,7 +143,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     if (!commitment || !currentRoutine) return;
 
     set({
-      agentStatus: { status: 'replanning', message: 'A commitment changed. Updating affected tasks...', progress: 30 },
+      agentStatus: { status: 'replanning', message: 'Commitment changed. Adapting in progress...', progress: 30 },
     });
     await new Promise((r) => setTimeout(r, 400));
 
@@ -157,7 +158,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
     );
 
     set({
-      agentStatus: { status: 'replanning', message: 'Analyzing conflicts and generating new plan...', progress: 60 },
+      agentStatus: { status: 'replanning', message: 'Conflicts found. Rebuilding the affected blocks...', progress: 60 },
     });
     await new Promise((r) => setTimeout(r, 500));
 
@@ -181,7 +182,7 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       },
       commitments: updatedCommitments,
       proposedRoutine: newRoutine,
-      agentStatus: { status: 'needs_approval', message: 'Review the proposed changes', progress: 100 },
+      agentStatus: { status: 'needs_approval', message: 'I protected your priorities. Review the new plan.', progress: 100 },
     });
   },
 
@@ -193,8 +194,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       currentRoutine: proposedRoutine,
       pendingProposal: null,
       proposedRoutine: null,
-      lastAction: { type: 'approved', message: 'Routine updated successfully', timestamp: Date.now() },
-      agentStatus: { status: 'ready', message: 'Changes approved. Routine updated.', progress: 100 },
+      lastAction: { type: 'approved', message: 'Adaptation complete \u2726 Your priorities are protected.', timestamp: Date.now() },
+      agentStatus: { status: 'ready', message: 'Adaptation complete \u2726 Routine updated.', progress: 100 },
     });
     setTimeout(() => set({ lastAction: null }), 4000);
   },
@@ -208,8 +209,8 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       commitments: pendingProposal.originalCommitments,
       pendingProposal: null,
       proposedRoutine: null,
-      lastAction: { type: 'rejected', message: 'Changes rejected. Routine unchanged.', timestamp: Date.now() },
-      agentStatus: { status: 'ready', message: 'Changes rejected. Routine unchanged.', progress: 100 },
+      lastAction: { type: 'rejected', message: 'Rejection noted. Your original plan is back in place.', timestamp: Date.now() },
+      agentStatus: { status: 'ready', message: 'Original plan restored. Nothing changed.', progress: 100 },
     });
     setTimeout(() => set({ lastAction: null }), 4000);
   },
@@ -221,8 +222,33 @@ export const usePlannerStore = create<PlannerState>((set, get) => ({
       recurringTasks: [...demoRecurringTasks],
       preferences: { ...defaultPreferences },
       isDemoMode: true,
-      agentStatus: { status: 'idle', message: 'Demo data loaded. Click "Generate My Week" to start.' },
+      agentStatus: { status: 'idle', message: 'Demo context loaded. Let us build your week.' },
     });
+  },
+
+  importCalendarCommitments: (calendarCommitments) => {
+    const { commitments, currentRoutine, preferences } = get();
+
+    const manualCommitments = commitments.filter((c) => c.source !== 'calendar');
+    const nextCommitments = [...manualCommitments, ...calendarCommitments];
+    set({ commitments: nextCommitments });
+
+    if (!currentRoutine) return [];
+
+    const conflicts: Conflict[] = [];
+    for (const cal of calendarCommitments) {
+      const days = cal.isRecurring && cal.recurrenceDays ? cal.recurrenceDays : [cal.timeSlot.day];
+      for (const day of days) {
+        const candidate: Commitment = {
+          ...cal,
+          timeSlot: { ...cal.timeSlot, day },
+        };
+        const detected = detectConflicts(candidate, currentRoutine, preferences);
+        conflicts.push(...detected.conflicts);
+      }
+    }
+
+    return conflicts;
   },
 
   reset: () => set(initialState),

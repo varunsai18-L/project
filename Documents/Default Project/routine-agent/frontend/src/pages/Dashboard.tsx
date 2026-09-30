@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Target, Calendar, Brain, CheckCircle, Clock, AlertTriangle, Pencil, X, ArrowRight, Check, Ban } from 'lucide-react';
+import { Sparkles, Target, Calendar, Brain, CheckCircle, Clock, AlertTriangle, Pencil, X, ArrowRight, Check, Ban, Zap, ShieldCheck, TrendingUp, Activity } from 'lucide-react';
 import { usePlannerStore } from '@/lib/store';
 import type { WeeklyRoutine, Commitment } from '@/types/planning';
 import {
@@ -13,13 +13,18 @@ import {
   ProgressRing,
 } from '@/components/ui';
 import {
-  PageHeader,
   PageSection,
   CardGrid,
   SectionTitle,
 } from '@/components/layout/PageLayout';
 import { AGENT_STATE_CONFIG, AgentState } from '@/types/agent';
+import { AgentCompanion } from '@/components/brand/AgentCompanion';
+import { RoutineOSMark } from '@/components/brand/RoutineOSLogo';
 import { cn } from '@/utils/helpers';
+
+const DAY_KEYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const;
+const FOCUS_TYPES = new Set(['goal','recurring']);
+const PIPES: Record<string, number> = { critical: 3, high: 3, medium: 2, low: 1 };
 
 export function Dashboard() {
   const {
@@ -51,6 +56,18 @@ export function Dashboard() {
   };
 
   const config = AGENT_STATE_CONFIG[agentStatus.status as AgentState];
+
+  const todayKey = DAY_KEYS[(new Date().getDay() + 6) % 7];
+  const focusBlocks = (currentRoutine?.blocks || []).filter((b) => FOCUS_TYPES.has(b.type));
+  const minutesOn = (day: string) =>
+    focusBlocks
+      .filter((b) => b.day === day)
+      .reduce((sum, b) => sum + (b.end.getTime() - b.start.getTime()) / 60000, 0);
+  const todayFocusH = Math.round((minutesOn(todayKey) / 60) * 10) / 10;
+  const weekFocusH = Math.round((focusBlocks.reduce((s, b) => s + (b.end.getTime() - b.start.getTime()) / 60000, 0) / 60) * 10) / 10;
+  const daysScheduled = new Set(focusBlocks.map((b) => b.day)).size;
+  const consistency = currentRoutine ? Math.round((daysScheduled / 7) * 100) : 0;
+  const planScore = currentRoutine?.score ?? 0;
 
   const stats = [
     { label: 'Fixed Commitments', value: commitments.filter((c) => c.type === 'fixed').length, icon: Calendar, color: 'brand' },
@@ -91,32 +108,91 @@ export function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Dashboard"
-        description={currentRoutine ? 'Your weekly routine is ready' : 'Configure your context and generate a routine'}
-        action={
-          <div className="flex items-center gap-3">
-            {currentRoutine && !pendingProposal && (
+      {/* ── HERO ───────────────────────────────────────────── */}
+      <section className="relative overflow-hidden rounded-3xl border border-surface-200/70 dark:border-surface-800/70 bg-white/70 dark:bg-surface-900/60 backdrop-blur-xl grain">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-500/12 via-transparent to-accent-500/10" />
+        <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-brand-500/25 blur-3xl" />
+        <div className="pointer-events-none absolute -right-12 -bottom-16 h-56 w-56 rounded-full bg-ember-500/20 blur-3xl" />
+
+        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] items-center px-6 py-8 sm:px-9 sm:py-11">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5 mb-5">
+              <RoutineOSMark uid="hero" size={22} />
+              <span className="eyebrow text-brand-500">RoutineOS</span>
+              <span className="h-3 w-px bg-surface-300 dark:bg-surface-700" />
+              <span className="eyebrow text-surface-400 dark:text-surface-500">Your AI life planner</span>
+            </div>
+
+            <h1 className="font-display font-bold text-4xl sm:text-5xl tracking-tight leading-[1.04] text-surface-900 dark:text-white">
+              Build consistency.
+              <br />
+              <span className="gradient-text">Protect your priorities.</span>
+              <br />
+              Adapt when life changes.
+            </h1>
+
+            <div className="mt-6 flex items-start gap-3">
+              <span className={cn(
+                'mt-2 w-2.5 h-2.5 rounded-full flex-shrink-0',
+                agentStatus.status === 'ready' && 'bg-success-500 shadow-[0_0_12px_rgba(34,197,94,0.9)]',
+                agentStatus.status === 'idle' && 'bg-surface-400',
+                (agentStatus.status === 'planning' || agentStatus.status === 'understanding' || agentStatus.status === 'optimizing') && 'bg-brand-500 animate-pulse shadow-glow',
+                agentStatus.status === 'replanning' && 'bg-warning-500 animate-pulse',
+                agentStatus.status === 'needs_approval' && 'bg-ember-500 animate-pulse shadow-glow-ember',
+              )} />
+              <div className="min-w-0">
+                <p className="font-display font-semibold text-lg sm:text-xl text-surface-900 dark:text-surface-100 leading-snug">
+                  {config?.coach}
+                </p>
+                <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">{agentStatus.message}</p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-2.5">
+              <InsightChip icon={Zap} tone="brand">
+                {todayFocusH > 0 ? `${todayFocusH}h` : '—'} of focused time available today
+              </InsightChip>
+              <InsightChip icon={ShieldCheck} tone="ember">
+                {goals.length} priorit{goals.length === 1 ? 'y' : 'ies'} protected
+              </InsightChip>
+              {currentRoutine && (
+                <InsightChip icon={TrendingUp} tone="violet">
+                  Plan score {planScore}%
+                </InsightChip>
+              )}
+            </div>
+
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              {currentRoutine && !pendingProposal && (
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowChangeModal(true)}
+                  leftIcon={<Pencil className="w-4 h-4" />}
+                >
+                  Change Commitment
+                </Button>
+              )}
               <Button
-                variant="secondary"
-                onClick={() => setShowChangeModal(true)}
-                leftIcon={<Pencil className="w-4 h-4" />}
+                onClick={handleGenerate}
+                disabled={agentStatus.status === 'understanding' || agentStatus.status === 'planning' || agentStatus.status === 'optimizing'}
+                leftIcon={<Sparkles className="w-4 h-4" />}
               >
-                Change Commitment
+                {agentStatus.status === 'understanding' || agentStatus.status === 'planning' || agentStatus.status === 'optimizing'
+                  ? 'Generating...'
+                  : 'Generate My Week'}
               </Button>
-            )}
-            <Button
-              onClick={handleGenerate}
-              disabled={agentStatus.status === 'understanding' || agentStatus.status === 'planning' || agentStatus.status === 'optimizing'}
-              leftIcon={<Sparkles className="w-4 h-4" />}
-            >
-              {agentStatus.status === 'understanding' || agentStatus.status === 'planning' || agentStatus.status === 'optimizing'
-                ? 'Generating...'
-                : 'Generate My Week'}
-            </Button>
+            </div>
           </div>
-        }
-      />
+
+          <div className="relative justify-self-center lg:justify-self-end">
+            <AgentCompanion
+              state={agentStatus.status as AgentState}
+              size={250}
+              className="scale-[0.72] sm:scale-90 lg:scale-100 origin-center"
+            />
+          </div>
+        </div>
+      </section>
 
       <AnimatePresence>
         {lastAction && (
@@ -148,48 +224,64 @@ export function Dashboard() {
         )}
       </AnimatePresence>
 
+      {/* ── PROGRESSION ────────────────────────────────────── */}
       <PageSection delay={0.1}>
-        <Card variant="elevated" padding="lg">
-          <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center justify-between">
-            <div className="flex items-center gap-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))]">
+          <Card variant="elevated" padding="lg" className="relative overflow-hidden">
+            <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-brand-500/15 blur-3xl" />
+            <div className="relative flex items-center gap-5">
               <AgentOrb
                 state={agentStatus.status as AgentState}
                 size="md"
                 showProgress={agentStatus.status !== 'idle' && agentStatus.status !== 'ready'}
-                progress={agentStatus.progress}
+                progress={agentStatus.progress ?? 0}
                 showLabel={false}
               />
-              <div>
-                <div className="flex items-center gap-2.5 mb-1.5">
-                  <span className={cn(
-                    'w-2.5 h-2.5 rounded-full flex-shrink-0',
-                    agentStatus.status === 'ready' && 'bg-success-500',
-                    agentStatus.status === 'idle' && 'bg-surface-400',
-                    (agentStatus.status === 'planning' || agentStatus.status === 'understanding' || agentStatus.status === 'optimizing') && 'bg-brand-500 animate-pulse',
-                    agentStatus.status === 'replanning' && 'bg-warning-500 animate-pulse',
-                    agentStatus.status === 'needs_approval' && 'bg-accent-500 animate-pulse',
-                  )} />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
-                    Agent {config?.label || 'Ready'}
-                  </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="eyebrow text-surface-400 dark:text-surface-500">Coach status</span>
+                  <Badge variant={agentStatus.status === 'ready' ? 'success' : agentStatus.status === 'error' ? 'danger' : 'primary'} size="sm" dot>
+                    {config?.label}
+                  </Badge>
                 </div>
-                <p className="font-display font-semibold text-2xl text-surface-900 dark:text-surface-100 leading-tight">
-                  {config?.description || 'Tell me what you want to accomplish'}
+                <p className="font-display font-semibold text-xl text-surface-900 dark:text-surface-100 leading-snug">
+                  {config?.coach}
                 </p>
                 <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">{agentStatus.message}</p>
               </div>
             </div>
-            {currentRoutine && (
-              <div className="flex items-center gap-6">
-                <div className="text-right">
-                  <p className="text-sm text-surface-500 dark:text-surface-400">Plan Score</p>
-                  <p className="font-display font-bold text-2xl text-surface-900 dark:text-surface-100">{currentRoutine.score}%</p>
-                </div>
-                <ProgressRing progress={currentRoutine.score} size={64} strokeWidth={5} color="success" />
-              </div>
-            )}
-          </div>
-        </Card>
+          </Card>
+
+          <MetricCard
+            icon={TrendingUp}
+            tone="brand"
+            label="Focus hours this week"
+            value={currentRoutine ? `${weekFocusH}h` : '—'}
+            hint={currentRoutine ? `${focusBlocks.length} focus blocks` : 'Generate to measure'}
+          />
+
+          <MetricCard
+            icon={Activity}
+            tone="violet"
+            label="Weekly consistency"
+            value={currentRoutine ? `${consistency}%` : '—'}
+            hint={currentRoutine ? `${daysScheduled} / 7 days scheduled` : 'No plan yet'}
+            bar={consistency}
+          />
+
+          <Card variant="elevated" padding="md" className="flex items-center gap-4">
+            <ProgressRing progress={planScore} size={68} strokeWidth={6} color="success" />
+            <div className="min-w-0">
+              <p className="text-xs text-surface-500 dark:text-surface-400">Plan score</p>
+              <p className="font-display font-bold text-3xl text-surface-900 dark:text-surface-100 leading-none mt-1">
+                {currentRoutine ? planScore : '—'}
+              </p>
+              <p className="text-xs text-surface-400 dark:text-surface-500 mt-1.5">
+                {currentRoutine ? 'Priorities protected' : 'Awaiting plan'}
+              </p>
+            </div>
+          </Card>
+        </div>
       </PageSection>
 
       <PageSection delay={0.15}>
@@ -235,7 +327,10 @@ export function Dashboard() {
       {currentRoutine && (
         <PageSection delay={0.2}>
           <div className="flex items-center justify-between mb-4">
-            <SectionTitle>This Week's Routine</SectionTitle>
+            <div className="flex items-center gap-3">
+              <SectionTitle>This Week&rsquo;s Routine</SectionTitle>
+              <span className="eyebrow text-surface-400 dark:text-surface-500 hidden sm:inline">Training plan</span>
+            </div>
             <Badge variant="success" dot>Ready</Badge>
           </div>
           <WeeklyTimelinePreview routine={currentRoutine} />
@@ -416,60 +511,97 @@ function ReplanPreview() {
   const { pendingProposal, approveProposal, rejectProposal } = usePlannerStore();
   if (!pendingProposal) return null;
 
+  const affectedTitles = Array.from(
+    new Set(
+      pendingProposal.conflicts
+        .flatMap((c) => c.affectedBlockIds)
+        .map((id) => pendingProposal.originalRoutine?.blocks.find((b) => b.id === id)?.title)
+        .filter((t): t is string => Boolean(t))
+    )
+  );
+
   return (
-    <Card variant="elevated" padding="lg" className="border-2 border-warning-500/30 bg-warning-50/50 dark:bg-warning-500/5">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 rounded-full bg-warning-500 animate-pulse" />
-            <h3 className="font-display font-semibold text-lg text-surface-900 dark:text-surface-100">Proposed Replan</h3>
+    <Card variant="elevated" padding="lg" className="relative overflow-hidden border-2 border-ember-500/40 shadow-glow-ember">
+      <div className="pointer-events-none absolute -left-20 -top-24 h-56 w-56 rounded-full bg-ember-500/15 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 -bottom-24 h-56 w-56 rounded-full bg-brand-500/15 blur-3xl" />
+
+      <div className="relative flex flex-col sm:flex-row sm:items-start gap-4 justify-between mb-6">
+        <div className="flex items-start gap-4 min-w-0">
+          <AgentOrb state="replanning" size="sm" showLabel={false} className="flex-shrink-0" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <h3 className="font-display font-semibold text-lg text-surface-900 dark:text-surface-100">
+                Commitment changed.
+              </h3>
+              <Badge variant="warning" dot>Needs Approval</Badge>
+            </div>
+            <p className="text-sm text-surface-600 dark:text-surface-400">{pendingProposal.reasoning}</p>
           </div>
-          <p className="text-sm text-surface-600 dark:text-surface-400">{pendingProposal.reasoning}</p>
         </div>
-        <Badge variant="warning" dot>Needs Approval</Badge>
       </div>
 
+      {/* CONFLICT DETECTED */}
       {pendingProposal.conflicts.length > 0 && (
-        <div className="mb-4 p-3 rounded-xl bg-danger-50 dark:bg-danger-500/10 border border-danger-500/30">
-          <div className="flex items-center gap-2 mb-1.5">
+        <div className="relative mb-6 p-4 rounded-2xl bg-white/70 dark:bg-surface-900/70 border border-danger-500/40">
+          <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-4 h-4 text-danger-500" />
-            <span className="text-sm font-semibold text-danger-600 dark:text-danger-400">
-              {pendingProposal.conflicts.length} conflict{pendingProposal.conflicts.length > 1 ? 's' : ''} detected
+            <span className="eyebrow text-danger-600 dark:text-danger-400">
+              Conflict detected · {pendingProposal.conflicts.length}
             </span>
           </div>
-          {pendingProposal.conflicts.slice(0, 3).map((c, i) => (
-            <p key={i} className="text-xs text-danger-600/80 dark:text-danger-400/80 ml-6">• {c.description}</p>
-          ))}
+          <div className="flex flex-wrap gap-2">
+            {(affectedTitles.length
+              ? affectedTitles
+              : pendingProposal.conflicts.map((c) => c.description)
+            ).slice(0, 6).map((title) => (
+              <span
+                key={title}
+                className="inline-flex items-center gap-2 rounded-lg border border-danger-500/35 bg-white dark:bg-surface-900 px-2.5 py-1.5 text-xs font-medium text-surface-800 dark:text-surface-200"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-danger-500" />
+                {title}
+              </span>
+            ))}
+          </div>
+          <p className="text-xs text-danger-600/80 dark:text-danger-400/80 mt-3">
+            {pendingProposal.conflicts[0]?.description}
+          </p>
         </div>
       )}
 
-      <div className="mb-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-3 rounded-xl bg-surface-50 dark:bg-surface-800/50 border border-surface-200 dark:border-surface-800">
-            <p className="text-xs font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500 mb-2">Before</p>
-            {pendingProposal.changes.slice(0, 3).map((change, i) => (
-              <p key={i} className="text-xs font-mono text-surface-600 dark:text-surface-400 mb-1">
-                {change.from.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}{' – '}
-                {change.from.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+      {/* CURRENT PLAN → ADAPTING → UPDATED PLAN */}
+      <div className="relative mb-6">
+        <div className="grid grid-cols-3 gap-2 items-center">
+          <StepNode label="Current plan" state="done" />
+          <StepNode label="Adapting" state="active" />
+          <StepNode label="Updated plan" state="next" />
+        </div>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 rounded-2xl bg-surface-50 dark:bg-surface-800/50 border border-surface-200 dark:border-surface-800">
+            <p className="eyebrow text-surface-400 dark:text-surface-500 mb-2.5">Before</p>
+            {pendingProposal.changes.slice(0, 4).map((change, i) => (
+              <p key={i} className="text-xs font-mono text-surface-600 dark:text-surface-400 mb-1.5">
+                {change.from?.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}{' – '}
+                {change.from?.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
               </p>
             ))}
           </div>
-          <div className="p-3 rounded-xl bg-brand-50 dark:bg-brand-900/20 border border-brand-500/30">
-            <p className="text-xs font-semibold uppercase tracking-wider text-brand-500/70 mb-2">After</p>
-            {pendingProposal.changes.slice(0, 3).map((change, i) => (
-              <p key={i} className="text-xs font-mono text-surface-700 dark:text-surface-300 mb-1">
-                {change.to.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}{' – '}
-                {change.to.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                {change.type === 'move' && <span className="text-brand-500 ml-1">← moved</span>}
-                {change.type === 'remove' && <span className="text-danger-500 ml-1">← removed</span>}
-                {change.type === 'add' && <span className="text-success-500 ml-1">← added</span>}
+          <div className="p-4 rounded-2xl border border-brand-500/40 bg-brand-500/10 dark:bg-brand-900/20">
+            <p className="eyebrow text-brand-500 mb-2.5">After</p>
+            {pendingProposal.changes.slice(0, 4).map((change, i) => (
+              <p key={i} className="text-xs font-mono text-surface-700 dark:text-surface-300 mb-1.5">
+                {change.to?.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}{' – '}
+                {change.to?.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                {change.type === 'move' && <span className="text-brand-500 ml-1.5">← moved</span>}
+                {change.type === 'remove' && <span className="text-danger-500 ml-1.5">← removed</span>}
+                {change.type === 'add' && <span className="text-success-500 ml-1.5">← added</span>}
               </p>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="space-y-2 mb-6">
+      <div className="relative space-y-2 mb-6">
         {pendingProposal.changes.slice(0, 5).map((change, i) => (
           <motion.div
             key={i}
@@ -483,9 +615,9 @@ function ReplanPreview() {
             </Badge>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-surface-900 dark:text-surface-100 truncate">
-                {change.from.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                {change.from?.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                 {' → '}
-                {change.to.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                {change.to?.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
               </p>
               <p className="text-xs text-surface-500 dark:text-surface-400 truncate">{change.reason}</p>
             </div>
@@ -493,15 +625,45 @@ function ReplanPreview() {
         ))}
       </div>
 
-      <div className="flex items-center gap-3">
+      <p className="relative text-sm text-surface-600 dark:text-surface-300 mb-5">
+        Your priorities are protected. I re-sequenced the affected blocks and kept your recovery time intact.
+      </p>
+
+      <div className="relative flex flex-wrap items-center gap-3">
         <Button onClick={approveProposal} leftIcon={<CheckCircle className="w-4 h-4" />}>
-          Approve Changes
+          Approve New Plan
         </Button>
         <Button variant="secondary" onClick={rejectProposal} leftIcon={<Ban className="w-4 h-4" />}>
           Reject
         </Button>
       </div>
     </Card>
+  );
+}
+
+function StepNode({ label, state }: { label: string; state: 'done' | 'active' | 'next' }) {
+  return (
+    <div className="flex flex-col items-center text-center gap-2">
+      <div
+        className={cn(
+          'w-full h-1.5 rounded-full',
+          state === 'done' && 'bg-brand-500/70',
+          state === 'active' && 'bg-gradient-to-r from-brand-400 via-ember-400 to-accent-500 animate-pulse shadow-glow-ember',
+          state === 'next' && 'bg-surface-300 dark:bg-surface-700'
+        )}
+      />
+      <span
+        className={cn(
+          'eyebrow',
+          state === 'done' && 'text-brand-500',
+          state === 'active' && 'text-ember-500',
+          state === 'next' && 'text-surface-400 dark:text-surface-500'
+        )}
+      >
+        {state === 'active' && '▼ '}
+        {label}
+      </span>
+    </div>
   );
 }
 
@@ -516,11 +678,30 @@ function WeeklyTimelinePreview({ routine }: { routine: WeeklyRoutine }) {
           <thead>
             <tr className="border-b border-surface-200 dark:border-surface-800">
               <th className="w-20 py-3.5 px-4 text-left font-semibold text-xs uppercase tracking-wider text-surface-400 dark:text-surface-500">Time</th>
-              {days.map((day) => (
-                <th key={day} className="py-3.5 px-2 text-center font-semibold text-xs uppercase tracking-wider text-surface-500 dark:text-surface-400">
-                  {day.slice(0, 3)}
-                </th>
-              ))}
+              {days.map((day) => {
+                const isToday = day === DAY_KEYS[(new Date().getDay() + 6) % 7];
+                return (
+                  <th
+                    key={day}
+                    className={cn(
+                      'py-3.5 px-2 text-center font-semibold text-xs uppercase tracking-wider',
+                      isToday
+                        ? 'text-brand-500'
+                        : 'text-surface-500 dark:text-surface-400'
+                    )}
+                  >
+                    <span className={cn('inline-flex flex-col items-center gap-1', isToday && 'animate-rise')}>
+                      {day.slice(0, 3)}
+                      <span
+                        className={cn(
+                          'h-0.5 w-6 rounded-full',
+                          isToday ? 'bg-gradient-to-r from-brand-400 to-accent-500 shadow-[0_0_8px_rgba(6,189,255,0.8)]' : 'bg-transparent'
+                        )}
+                      />
+                    </span>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -553,19 +734,44 @@ function WeeklyTimelinePreview({ routine }: { routine: WeeklyRoutine }) {
                       <td key={day} className="py-1 px-1">
                         {block && (
                           <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
+                            initial={{ opacity: 0, scale: 0.92 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.2 }}
-                            className="h-8 rounded-lg text-xs font-medium flex items-center justify-center px-1.5 cursor-default transition-all hover:scale-105 hover:shadow-sm"
+                            transition={{ duration: 0.22 }}
+                            className="group relative h-9 rounded-lg overflow-hidden px-1.5 flex flex-col justify-center cursor-default transition-all hover:scale-[1.04] hover:shadow-md"
                             style={{
-                              backgroundColor: (block.color || '#3b82f6') + '1a',
-                              color: block.color || '#3b82f6',
-                              border: `1px solid ${(block.color || '#3b82f6')}30`,
-                              boxShadow: `0 1px 3px ${(block.color || '#3b82f6')}15`,
+                              backgroundColor: (block.color || '#06bdff') + '1f',
+                              border: `1px solid ${(block.color || '#06bdff')}45`,
+                              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 4px ${(block.color || '#06bdff')}18`,
                             }}
-                            title={`${block.title} · ${block.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – ${block.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}
+                            title={`${block.title} · ${block.priority} priority · ${block.type} · ${block.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} – ${block.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}
                           >
-                            <span className="truncate">{block.title}</span>
+                            <span
+                              className="absolute left-0 top-0 h-full w-[3px]"
+                              style={{ backgroundColor: block.color || '#06bdff' }}
+                            />
+                            <span
+                              className="truncate text-[11px] font-semibold leading-tight"
+                              style={{ color: block.color || '#06bdff' }}
+                            >
+                              {block.title}
+                            </span>
+                            <span className="flex items-center gap-[3px] mt-1">
+                              {[0, 1, 2].map((p) => (
+                                <span
+                                  key={p}
+                                  className="h-[3px] w-3 rounded-full"
+                                  style={{
+                                    backgroundColor:
+                                      p < PIPES[block.priority]
+                                        ? block.color || '#06bdff'
+                                        : 'rgba(128,128,128,0.28)',
+                                  }}
+                                />
+                              ))}
+                              <span className="text-[9px] uppercase tracking-wider text-surface-400 dark:text-surface-500 ml-0.5">
+                                {block.type === 'fixed' ? 'fixed' : block.type === 'sleep' ? 'rest' : block.type}
+                              </span>
+                            </span>
                           </motion.div>
                         )}
                       </td>
@@ -579,10 +785,10 @@ function WeeklyTimelinePreview({ routine }: { routine: WeeklyRoutine }) {
       </div>
       <div className="px-4 py-3 border-t border-surface-200/70 dark:border-surface-800/50 flex flex-wrap items-center gap-4 bg-surface-50/50 dark:bg-surface-800/30">
         {[
-          { label: 'Fixed', color: '#3b82f6' },
-          { label: 'Goal', color: '#61dafb' },
+          { label: 'Fixed', color: '#06bdff' },
+          { label: 'Goal', color: '#7c56ff' },
           { label: 'Recurring', color: '#22c55e' },
-          { label: 'Sleep', color: '#6366f1' },
+          { label: 'Rest', color: '#6366f1' },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-1.5">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: item.color + '30', border: `1px solid ${item.color}50` }} />
@@ -633,7 +839,7 @@ function ContextCard({ title, count, icon: Icon, color, items, emptyMsg }: {
               transition={{ delay: 0.1 + i * 0.05 }}
               className="flex items-center gap-2 p-2.5 rounded-lg bg-surface-50 dark:bg-surface-800/50 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors"
             >
-              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color || '#3b82f6' }} />
+              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color || '#06bdff' }} />
               <span className="text-sm text-surface-700 dark:text-surface-300 truncate flex-1">{item.title}</span>
               {item.priority && <Badge variant="neutral" size="sm">{item.priority}</Badge>}
             </motion.div>
@@ -641,6 +847,81 @@ function ContextCard({ title, count, icon: Icon, color, items, emptyMsg }: {
         ) : (
           <p className="text-sm text-surface-500 dark:text-surface-400 text-center py-4">{emptyMsg}</p>
         )}
+      </div>
+    </Card>
+  );
+}
+
+type Tone = 'brand' | 'violet' | 'ember';
+
+const TONE: Record<Tone, { wrap: string; icon: string }> = {
+  brand: {
+    wrap: 'border-brand-500/35 bg-brand-500/10 text-brand-700 dark:text-brand-300',
+    icon: 'text-brand-500',
+  },
+  violet: {
+    wrap: 'border-accent-500/35 bg-accent-500/10 text-accent-700 dark:text-accent-300',
+    icon: 'text-accent-500',
+  },
+  ember: {
+    wrap: 'border-ember-500/40 bg-ember-500/10 text-ember-700 dark:text-ember-300',
+    icon: 'text-ember-500',
+  },
+};
+
+function InsightChip({
+  icon: Icon,
+  tone,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  tone: Tone;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className={cn('hud-chip border', TONE[tone].wrap)}>
+      <Icon className={cn('w-3.5 h-3.5', TONE[tone].icon)} />
+      {children}
+    </span>
+  );
+}
+
+function MetricCard({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  hint,
+  bar,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  tone: Tone;
+  label: string;
+  value: string;
+  hint?: string;
+  bar?: number;
+}) {
+  return (
+    <Card variant="elevated" padding="md" className="flex flex-col justify-between">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs text-surface-500 dark:text-surface-400 leading-snug">{label}</p>
+        <span className={cn('w-7 h-7 rounded-lg grid place-items-center border', TONE[tone].wrap)}>
+          <Icon className={cn('w-4 h-4', TONE[tone].icon)} />
+        </span>
+      </div>
+      <div className="mt-4">
+        <p className="font-display font-bold text-3xl leading-none text-surface-900 dark:text-surface-100">
+          {value}
+        </p>
+        {typeof bar === 'number' && bar > 0 && (
+          <div className="mt-3 h-1.5 rounded-full bg-surface-200 dark:bg-surface-800 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-brand-400 to-accent-500 transition-all duration-700"
+              style={{ width: `${bar}%` }}
+            />
+          </div>
+        )}
+        {hint && <p className="text-xs text-surface-400 dark:text-surface-500 mt-2">{hint}</p>}
       </div>
     </Card>
   );
